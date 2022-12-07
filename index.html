@@ -1,0 +1,431 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Teensy BLE test - Web BLE test</title>
+  <link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet">
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@jaames/iro/dist/iro.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/109/three.min.js"></script>
+  <script src="GLTFLoader.js"></script>
+  <style>
+
+  body {
+    font-family: 'Roboto', sans-serif; color: #888888; background: #000000; font-size: small;
+  }
+
+  #bigButton {
+    background-color: aqua; border: none; color: black; padding: 1px; text-align: center;
+    text-decoration: none; font-size: 6px; margin: 12px 20px; height: 15px; width: 30px;
+    border-radius: 10%; outline:none; font-family: 'Roboto', sans-serif;
+  }
+
+  .container {
+    width:960px;height:384px;margin-top:30px;margin-bottom:7.5px;  margin: 0 auto;
+  }
+
+  .widget {
+    background: #111111;
+    border: 1px solid #000000;
+    border-radius: 0px;
+    padding: 12px;
+    margin: 6px;
+    float: left;
+  }
+
+  .status {
+    background-image: url("logo.png");
+    background-size: 80px;
+    background-position: 98% 50%;
+    background-repeat: no-repeat;
+    width: 885px;  height: 42px;
+    color: white;
+  }
+
+  .square {
+    width: 192px;  height: 192px;
+    position: relative;
+  }
+
+  .label {
+    height: 15px;
+    display: inline;
+    font-size: 15px;
+  }
+
+  .digit {
+    font-size: 30px;
+    color: #888888;
+    float: right;
+  }
+
+  .short {width: 192px;  height: 96px;}
+  .double {width: 423px;  height: 192px;}
+  .graph{width: 192px;  height: 177px;}
+  .doublegraph{width: 423px;  height: 177px;}
+  .shortgraph{width: 192px;  height: 81px;}
+
+  #color-picker-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="label">&nbsp;&nbsp;IMPORTANT - first upload <a href="https://create.arduino.cc/editor/dpajak/e4128780-d76d-438f-97a4-541740cb0473/preview">sketch</a> to Arduino Nano 33 BLE Sense board<br></div>
+    <div class="status widget">
+      <button id="bigButton"></button>
+      <div class="label" id="bluetooth">Click button to connect to the board</div>
+    </div>
+
+    <div class="square widget" id="3d">
+      <div class="label">&#128230;3D</div>
+    </div>
+
+    <div class="square widget">
+      <div class="label">&#128640; Accelerometer</div>
+      <div id="accelerometer" class="graph"></div>
+    </div>
+
+    <div class="square widget">
+      <div class="label">&#128171; Gyroscope</div>
+      <div id="gyroscope" class="graph"></div>
+    </div>
+
+    <div class="square widget">
+      <div class="label">&#128171; Magnetometer</div>
+      <div id="magnetometer" class="graph"></div>
+    </div>
+
+    <div class="double widget">
+      <div class="label">&#128640; AHRS</div>
+      <div id="ahrs" class="doublegraph"></div>
+    </div>
+
+  </div>
+</body>
+<script type="text/javascript">
+/*
+Demo showing simple dashboard
+
+Based on: https://developers.google.com/web/updates/2015/07/interact-with-ble-devices-on-the-web
+For earlier versions of Windows and Linux, you still have to go to chrome://flags/#enable-experimental-web-platform-features,
+enable the highlighted flag, and restart Chrome for now.
+*/
+
+
+
+var maxRecords = 64;
+
+var BLETeensy =
+{
+  accelerometer:
+  {
+    uuid: '6fbe1da7-3001-44de-92c4-bb6e04fb0212',
+    properties: ['BLENotify'],
+    structure: ['Float32','Float32','Float32'],
+    data: {'Ax':[],'Ay':[],'Az':[]},
+  },
+  gyroscope:
+  {
+    uuid: '6fbe1da7-3002-44de-92c4-bb6e04fb0212',
+    properties: ['BLENotify'],
+    structure: ['Float32','Float32','Float32'],
+    data: {'Gx':[],'Gy':[],'Gz':[]},
+  },
+
+  magnetometer:
+  {
+    uuid: '6fbe1da7-3003-44de-92c4-bb6e04fb0212',
+    properties: ['BLENotify'],
+    structure: ['Float32','Float32','Float32'],
+    data: {'Mx':[],'My':[],'Mz':[]},
+  },
+
+  ahrs:
+  {
+    uuid: '6fbe1da7-3004-44de-92c4-bb6e04fb0212',
+    properties: ['BLENotify'],
+    structure: ['Float32','Float32','Float32'],
+    data: {'Yaw':[], 'Pitch':[], 'Roll':[]},
+  }
+
+}
+
+
+const sensors = Object.keys(BLETeensy);
+const SERVICE_UUID = '6fbe1da7-0000-44de-92c4-bb6e04fb0212';
+var bytesReceived = 0;
+var bytesPrevious = 0;
+
+// UI elements
+const bigButton = document.getElementById('bigButton');
+const BLEstatus = document.getElementById('bluetooth');
+
+if ("bluetooth" in navigator) {
+  bigButton.addEventListener('click', function(event) {
+    connect();
+  });
+  // else the browser doesn't support bluetooth
+} else {
+  msg("browser not supported"); bigButton.style.backgroundColor = "red";
+  alert("Error: This browser doesn't support Web Bluetooth. Try using Chrome.");
+}
+
+function msg(m){
+  BLEstatus.innerHTML = m;
+}
+
+async function connect() {
+  bigButton.style.backgroundColor="grey";
+  msg('requesting device ...');
+
+  const device = await navigator.bluetooth.requestDevice({
+    filters: [
+      {
+        services: [SERVICE_UUID] // SERVICE_UUID
+      }
+    ]
+  });
+
+  msg('connecting to device ...');
+  device.addEventListener('gattserverdisconnected', onDisconnected);
+  const server = await device.gatt.connect();
+
+  msg('getting primary service ...');
+  const service = await server.getPrimaryService(SERVICE_UUID);
+
+  // Set up the characteristics
+  for (const sensor of sensors) {
+    msg('characteristic '+sensor+"...");
+    BLETeensy[sensor].characteristic = await service.getCharacteristic(BLETeensy[sensor].uuid);
+    // Set up notification
+    if (BLETeensy[sensor].properties.includes("BLENotify")){
+      BLETeensy[sensor].characteristic.addEventListener('characteristicvaluechanged',function(event){handleIncoming(BLETeensy[sensor],event.target.value);});
+      await BLETeensy[sensor].characteristic.startNotifications();
+    }
+    // Set up polling for read
+    if (BLETeensy[sensor].properties.includes("BLERead")){
+      BLETeensy[sensor].polling = setInterval(function() {
+        BLETeensy[sensor].characteristic.readValue().then(function(data){handleIncoming(BLETeensy[sensor],data);})}
+        , 500);
+      }
+
+      BLETeensy[sensor].rendered = false;
+    }
+    bigButton.style.backgroundColor = 'green';
+    msg('connected.');
+
+  }
+
+  function handleIncoming(sensor, dataReceived) {
+    const columns = Object.keys(sensor.data); // column headings for this sensor
+    const typeMap = {
+      "Uint8":    {fn:DataView.prototype.getUint8,    bytes:1},
+      "Uint16":   {fn:DataView.prototype.getUint16,   bytes:2},
+      "Float32":  {fn:DataView.prototype.getFloat32,  bytes:4}
+    };
+    var packetPointer = 0,i = 0;
+
+    // Read each sensor value in the BLE packet and push into the data array
+    sensor.structure.forEach(function(dataType){
+      // Lookup function to extract data for given sensor property type
+      var dataViewFn = typeMap[dataType].fn.bind(dataReceived);
+      // Read sensor ouput value - true => Little Endian
+      var unpackedValue = dataViewFn(packetPointer,true);
+      // Push sensor reading onto data array
+      sensor.data[columns[i]].push(unpackedValue);
+      // Keep array at buffer size
+      if (sensor.data[columns[i]].length> maxRecords) {sensor.data[columns[i]].shift();}
+      // move pointer forward in data packet to next value
+      packetPointer += typeMap[dataType].bytes;
+      bytesReceived += typeMap[dataType].bytes;
+      i++;
+    });
+    sensor.rendered = false; // flag - vizualization needs to be updated
+  }
+
+  function onDisconnected(event) {
+    let device = event.target;
+    bigButton.style.backgroundColor="red";
+    // clear read polling
+    for (const sensor of sensors) {
+      if(typeof BLETeensy[sensor].polling !== 'undefined'){
+        clearInterval(BLETeensy[sensor].polling);
+      }
+    }
+
+
+    msg('Device ' + device.name + ' is disconnected.');
+  }
+
+  function BLEwriteTo(sensor){
+
+  }
+
+  </script>
+  <script>
+
+
+  // Graphing
+  const colors = ["#FF355E","#FD5B20","#FF6037","#FF9966","#FF9933","#FFCC33","#FFFF66","#FFFF66","#CCFF00","#66FF66","#AAF0D1","#50BFE6","#FF6EFF","#EE34D2","#FF00CC","#FF00CC"];
+  var colorIndex = 0;
+  function initGraph(sensor){
+    var title = sensor;
+    var series = Object.keys(BLETeensy[sensor].data);
+    var format = [];
+    series.forEach(function(item){
+      colorIndex++;
+      if (colorIndex>colors.length) {colorIndex=0;}
+      format.push({
+        y: [],
+        name: item,
+        mode: 'lines',
+        width: 1,
+        line: {width: 1,color: colors[colorIndex]}
+      });
+    });
+
+    Plotly.plot(title,format,{
+      plot_bgcolor: '#111111',
+      paper_bgcolor: '#111111',
+      margin: {l:8,r:8,b:18,t:18},
+      showlegend: false,
+      yaxis: {'showticklabels':false},
+      xaxis: {
+        'range': [0,maxRecords],
+      'showticklabels':false,
+        'autorange': false,
+        'showgrid': true,
+  'zeroline': true,
+        tickfont: {size: 8}
+      }
+    }
+  );
+}
+
+// 3d model
+var renderer = new THREE.WebGLRenderer();
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(75, 1, 1, 10000);
+
+function init3D(){
+  var container = document.getElementById( '3d' );
+  var loader = new THREE.GLTFLoader();
+  scene.background = new THREE.Color( 0x111111 );
+  renderer.setSize( 177, 177 );
+  renderer.setPixelRatio( 4 );
+  container.appendChild( renderer.domElement );
+  loader.load( 'models/nano33ble.glb',
+  // called when the Arduinio model is loaded
+  function ( gltf ) {
+
+    // Model
+    arduinoModel = gltf.scene;
+    scene.add(arduinoModel);
+
+    // LED
+    var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+    ledMaterial = new THREE.MeshBasicMaterial( {color: 0x111111} );
+    ledObject = new THREE.Mesh( geometry, ledMaterial );
+    ledObject.position.set( -4.5, 4, 0 );
+    arduinoModel.add( ledObject );
+    ledLight = new THREE.PointLight( 0x111111, 3, 100 );
+    ledLight.position.set( -4.5, 4, -1 );
+    arduinoModel.add( ledLight );
+    var sphereSize = 1;
+
+    // Light
+    const color = 0xFFFFFF;
+    const intensity = 1;
+    const light = new THREE.DirectionalLight(color, intensity);
+    light.position.set(-20, 100, 0);
+    light.target.position.set(0, 0, 0);
+    scene.add(light);
+    scene.add(light.target);
+    var hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 1000);
+    scene.add(hemiLight);
+
+    // Camera
+    camera.position.set (0,40,0);
+    camera.rotation.y = Math.PI; // 180
+    camera.lookAt(new THREE.Vector3(0,0,0));
+    renderer.render(scene, camera);
+  }
+);
+}
+
+
+// return last item of array
+Array.prototype.latest = function(){return this[this.length - 1];};
+
+
+  function graph(sensor){
+    var labels = Object.keys(BLETeensy[sensor].data);
+    var values = [];
+    // after
+    labels.forEach(function(label){
+      values.push(BLETeensy[sensor].data[label]);
+    });
+    Plotly.restyle(sensor, {y: values});
+  }
+
+  function digit(sensor){
+    const value = BLETeensy[sensor].data[sensor].latest();
+    const div = document.getElementById(sensor+"-value");
+    if (!Number.isNaN(value)) {div.innerHTML = Math.round(value*10)/10;};
+  }
+
+  function update3d(sensor){
+    var Ax = BLETeensy['accelerometer'].data.Ax.latest() * 0.0174533;
+    var Ay = BLETeensy['accelerometer'].data.Ay.latest() * 0.0174533;
+    var Az = BLETeensy['accelerometer'].data.Az.latest() * 0.0174533;
+    var pitch = Math.atan2((-Ax) , Math.sqrt(Ay * Ay + Az * Az));
+    var roll = Math.atan2(Ay , Az);
+    arduinoModel.rotation.x = roll;
+    arduinoModel.rotation.y = pitch;
+    arduinoModel.rotation.z = 0;
+    renderer.render(scene, camera);
+  }
+
+  function bytes(){
+    if (bytesReceived > bytesPrevious){
+      bytesPrevious= bytesReceived;
+      msg(bytesReceived+" bytes received");
+    }
+  }
+
+  var skip_frame = false;
+  function draw(){
+    function updateViz(sensor,fns){
+      if (BLETeensy[sensor].rendered == false) { // only render if new values are received
+        fns.forEach(function(fn){
+          fn(sensor);
+        });
+        BLETeensy[sensor].rendered = true;
+      }
+    }
+    if (skip_frame == false){ // TODO update with fuction to iterate object with viz function as a property
+      //updateViz('accelerometer', [graph],[update3d]);
+      updateViz('accelerometer', [graph]);    
+      updateViz('gyroscope', [graph]);
+      updateViz('magnetometer', [graph]);
+      updateViz('ahrs', [graph]);
+      //bytes();
+
+      skip_frame = true; // render alternate frames = 30fps
+    } else {skip_frame=false;}
+    requestAnimationFrame(draw);
+  }
+
+  initGraph('accelerometer');
+  initGraph('gyroscope');
+  initGraph('magnetometer');
+  initGraph('ahrs');
+  //init3D();
+  requestAnimationFrame(draw);
+  </script>
+  </html>
