@@ -343,9 +343,9 @@ Array.prototype.latest = function(){return this[this.length - 1];};
   }
 
   function update3d(sensor){
-    arduinoModel.rotation.x = Roll;
+    arduinoModel.rotation.x = Yaw;
     arduinoModel.rotation.y = Pitch;
-    arduinoModel.rotation.z = Yaw;
+    arduinoModel.rotation.z = Roll;
     renderer.render(scene, camera);
   }
 
