@@ -409,8 +409,8 @@ Array.prototype.latest = function(){return this[this.length - 1];};
       }
     }
     if (skip_frame == false){ // TODO update with fuction to iterate object with viz function as a property
-      //updateViz('accelerometer', [graph],[update3d]);
-      updateViz('accelerometer', [graph]);    
+      updateViz('accelerometer', [graph],[update3d]);
+      //updateViz('accelerometer', [graph]);    
       updateViz('gyroscope', [graph]);
       updateViz('magnetometer', [graph]);
       updateViz('ahrs', [graph]);
@@ -425,7 +425,7 @@ Array.prototype.latest = function(){return this[this.length - 1];};
   initGraph('gyroscope');
   initGraph('magnetometer');
   initGraph('ahrs');
-  //init3D();
+  init3D();
   requestAnimationFrame(draw);
   </script>
   </html>
