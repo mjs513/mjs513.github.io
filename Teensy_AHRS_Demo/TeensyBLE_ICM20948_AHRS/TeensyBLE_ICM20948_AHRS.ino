@@ -129,7 +129,6 @@ void loop() {
       getYawPitchRoll(ypr);
 
       if (ahrsCharacteristic.subscribed()) {
-        Serial.printf("Yaw: %f, Pitch: %f, Roll: %f\n", ypr[0], ypr[1], ypr[2]);
         ahrsCharacteristic.writeValue(ypr, sizeof(ypr));
       }       
 
@@ -137,30 +136,20 @@ void loop() {
       
       if (accelerationCharacteristic.subscribed() && dataRdy) {
         float acceleration[3] = { ax, ay, az };
-        for(uint8_t i = 0; i < 3; i++) {
-          Serial.print(acceleration[i]); Serial.print(", ");     
-        }  
         accelerationCharacteristic.writeValue(acceleration, sizeof(acceleration));
       }
       delay(5);      
 
       if (gyroscopeCharacteristic.subscribed() && dataRdy) {
-        float dps[3] = { gx, gy, gz};
-        for(uint8_t i = 0; i < 3; i++) {
-          Serial.print(dps[i]); Serial.print(", ");     
-        }            
+        float dps[3] = { gx, gy, gz};      
         gyroscopeCharacteristic.writeValue(dps, sizeof(dps));
       }
       delay(5);   
 
       if (magneticFieldCharacteristic.subscribed() && dataRdy) {
-        float magneticField[3] = { mx, my, mz };
-        for(uint8_t i = 0; i < 3; i++) {
-          Serial.print(magneticField[i]); Serial.print(", ");     
-        }      
+        float magneticField[3] = { mx, my, mz };      
         magneticFieldCharacteristic.writeValue(magneticField, sizeof(magneticField));
       }
-      Serial.println(); 
       delay(20);   
     }
   }
