@@ -384,11 +384,13 @@ function init3D(){
   }
 
   function update3d(sensor){
-    var Ax = BLETeensy['accelerometer'].data.Ax.latest() * 0.0174533;
-    var Ay = BLETeensy['accelerometer'].data.Ay.latest() * 0.0174533;
-    var Az = BLETeensy['accelerometer'].data.Az.latest() * 0.0174533;
-    var pitch = Math.atan2((-Ax) , Math.sqrt(Ay * Ay + Az * Az));
-    var roll = Math.atan2(Ay , Az);
+    //var Ax = BLETeensy['accelerometer'].data.Ax.latest() * 0.0174533;
+    //var Ay = BLETeensy['accelerometer'].data.Ay.latest() * 0.0174533;
+    //var Az = BLETeensy['accelerometer'].data.Az.latest() * 0.0174533;
+    //var pitch = Math.atan2((-Ax) , Math.sqrt(Ay * Ay + Az * Az));
+    //var roll = Math.atan2(Ay , Az);
+    var pitch = BLETeensy['ahrs'].data.Pitch.latest();
+    var roll = BLETeensy['ahrs'].data.Roll.latest();
     arduinoModel.rotation.x = roll;
     arduinoModel.rotation.y = pitch;
     arduinoModel.rotation.z = 0;
