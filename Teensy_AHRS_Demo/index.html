@@ -418,7 +418,7 @@ function init3D(){
       updateViz('gyroscope', [graph]);
       updateViz('accelerometer', [graph]);
       updateViz('magnetometer', [graph]);
-      updateViz('ahrs', [graph]);
+      updateViz('ahrs', [graph, update3d]);
 
       skip_frame = true; // render alternate frames = 30fps
     } else {skip_frame=false;}
@@ -429,7 +429,7 @@ function init3D(){
   initGraph('accelerometer');
   initGraph('gyroscope');
   initGraph('ahrs');
-  //init3D();
+  init3D();
   requestAnimationFrame(draw);
   </script>
   </html>
