@@ -414,7 +414,8 @@ function init3D(){
     }
     if (skip_frame == false){ // TODO update with fuction to iterate object with viz function as a property
       updateViz('gyroscope', [graph]);
-      updateViz('accelerometer', [graph]);
+      //updateViz('accelerometer', [graph]);
+      updateViz('accelerometer', [update3d]);
       updateViz('magnetometer', [graph]);
       updateViz('ahrs', [graph]);
 
@@ -424,10 +425,10 @@ function init3D(){
   }
 
   initGraph('magnetometer');
-  initGraph('accelerometer');
+  //initGraph('accelerometer');
   initGraph('gyroscope');
   initGraph('ahrs');
-  //init3D();
+  init3D();
   requestAnimationFrame(draw);
   </script>
   </html>
