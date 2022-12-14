@@ -384,13 +384,11 @@ function init3D(){
   }
 
   function update3d(sensor){
-    //var Ax = BLETeensy['accelerometer'].data.Ax.latest() * 0.0174533;
-    //var Ay = BLETeensy['accelerometer'].data.Ay.latest() * 0.0174533;
-    //var Az = BLETeensy['accelerometer'].data.Az.latest() * 0.0174533;
-    //var pitch = Math.atan2((-Ax) , Math.sqrt(Ay * Ay + Az * Az));
-    //var roll = Math.atan2(Ay , Az);
-    var pitch = BLETeensy['ahrs'].data.Pitch.latest();
-    var roll = BLETeensy['ahrs'].data.Roll.latest();
+    var Ax = BLETeensy['accelerometer'].data.Ax.latest();
+    var Ay = BLETeensy['accelerometer'].data.Ay.latest();
+    var Az = BLETeensy['accelerometer'].data.Az.latest();
+    var pitch = Math.atan2((-Ax) , Math.sqrt(Ay * Ay + Az * Az));
+    var roll = Math.atan2(Ay , Az);
     arduinoModel.rotation.x = roll;
     arduinoModel.rotation.y = pitch;
     arduinoModel.rotation.z = 0;
@@ -417,8 +415,8 @@ function init3D(){
     if (skip_frame == false){ // TODO update with fuction to iterate object with viz function as a property
       updateViz('gyroscope', [graph]);
       updateViz('accelerometer', [graph]);
-      updateViz('magnetometer', [graph]);
-      updateViz('ahrs', [update3d]);
+      updateViz('magnetometer', [graph, update3d]);
+      updateViz('ahrs', [graph]);
 
       skip_frame = true; // render alternate frames = 30fps
     } else {skip_frame=false;}
@@ -428,7 +426,7 @@ function init3D(){
   initGraph('magnetometer');
   initGraph('accelerometer');
   initGraph('gyroscope');
-  //initGraph('ahrs');
+  initGraph('ahrs');
   init3D();
   requestAnimationFrame(draw);
   </script>
